@@ -39,7 +39,7 @@ fun main() {
         return Finder(input, "".toCharArray()).findMasInAnX()
     }
 
-    val input = readInput("day04/Day04_test")
+    val input = readInput("day04/Day04")
     //println(part1(input))
     println(part2(input))
 }
@@ -53,12 +53,14 @@ class Finder(private val input: List<String>, private val forwards: CharArray) {
          * . A .
          * M . S
          * Is valid, as is:
-         * S . S    S . M
-         * . A .    . A .
-         * M . M    S . M
+         * S . S    S . M   M . M   M . S
+         * . A .    . A .   . A .   . A .
+         * M . M    S . M   S . S   M . S
          *
          * Grid rotation? Or check for M and S then make sure they line up correctly (Each character either on the
          * same colum or same row, not both).
+         * Other ideas: Get all four letters, make sure there's only two of each and that the opposites don't
+         * match i.e. NW != SE and SW != NE
          */
         var xCount = 0
 
@@ -67,40 +69,67 @@ class Finder(private val input: List<String>, private val forwards: CharArray) {
             for (columnIndex in input[rowIndex].indices) {
                 if (input[rowIndex][columnIndex] == 'A') {
                     println("Found A at $rowIndex,$columnIndex")
-                    // We need an M in row-1, column-1 and row+1, column-1
-                    val upperLeft = Pair(rowIndex-1, columnIndex-1)
-                    if (upperLeft.first < 0 || upperLeft.second < 0) {
-                        continue
-                    }
-
-                    val lowerLeft = Pair(rowIndex+1, columnIndex-1)
-                    if (lowerLeft.first > input.lastIndex || lowerLeft.second < 0) {
-                        continue
-                    }
-
-                    // We need an S in row-1, column+1 and row+1, column+1
-                    val upperRight = Pair(rowIndex-1, columnIndex+1)
-                    if (upperRight.first < 0 || upperRight.second > input[columnIndex].lastIndex) {
-                        continue
-                    }
-
-                    val lowerRight = Pair(rowIndex+1, columnIndex+1)
-                    if (lowerRight.first > input.lastIndex || lowerRight.second > input[columnIndex].lastIndex) {
-                        continue
-                    }
-
-                    if (input[rowIndex-1][columnIndex-1] == 'M' &&
-                        input[rowIndex+1][columnIndex-1] == 'M' &&
-
-                        input[rowIndex-1][columnIndex+1] == 'S' &&
-                        input[rowIndex+1][columnIndex+1] == 'S') {
-                        xCount++
-                    }
+                    val compassPointChars = getFourChars(rowIndex, columnIndex) ?: continue
+                    if (!validateExtractedChars(compassPointChars)) continue
+                    xCount++
                 }
             }
         }
 
         return xCount
+    }
+
+    private fun getFourChars(startingRow: Int, startingColumn: Int) : Map<CompassPoints, Char>? {
+        val compassPointChars = mutableMapOf<CompassPoints, Char>()
+        // Setup the points and ensure they're valid
+        val upperLeft = Pair(startingRow-1, startingColumn-1)
+        if (upperLeft.first < 0 || upperLeft.second < 0) {
+            return null
+        } else {
+            compassPointChars[CompassPoints.NW] = input[upperLeft.first][upperLeft.second]
+        }
+
+        val lowerLeft = Pair(startingRow+1, startingColumn-1)
+        if (lowerLeft.first > input.lastIndex || lowerLeft.second < 0) {
+            return null
+        } else {
+            compassPointChars[CompassPoints.SW] = input[lowerLeft.first][lowerLeft.second]
+        }
+
+        val upperRight = Pair(startingRow-1, startingColumn+1)
+        if (upperRight.first < 0 || upperRight.second > input[startingColumn].lastIndex) {
+            return null
+        } else {
+            compassPointChars[CompassPoints.NE] = input[upperRight.first][upperRight.second]
+        }
+
+        val lowerRight = Pair(startingRow+1, startingColumn+1)
+        if (lowerRight.first > input.lastIndex || lowerRight.second > input[startingColumn].lastIndex) {
+            return null
+        } else {
+            compassPointChars[CompassPoints.SE] = input[lowerRight.first][lowerRight.second]
+        }
+
+        return compassPointChars
+    }
+
+    private fun validateExtractedChars(compassChars: Map<CompassPoints, Char>) : Boolean {
+        var mCount = 0
+        var sCount = 0
+        for (c in compassChars.values) {
+            if (c !in listOf('M', 'S')) {
+                return false
+            }
+
+            if (c == 'M') mCount++
+            if (c == 'S') sCount++
+        }
+
+        if (mCount != 2 || sCount != 2) return false
+
+        // Make sure the opposite compass points are not equal
+        return (compassChars[CompassPoints.NW] != compassChars[CompassPoints.SE] &&
+                compassChars[CompassPoints.NE] != compassChars[CompassPoints.SW])
     }
 
     fun findXmas() : Int {
@@ -318,4 +347,11 @@ class Finder(private val input: List<String>, private val forwards: CharArray) {
         println("Found between $row,$column and $currRow,$currColumn")
         return true
     }
+}
+
+enum class CompassPoints {
+    NW,
+    NE,
+    SW,
+    SE
 }
